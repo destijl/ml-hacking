@@ -1,0 +1,72 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: llama-2-70b-chat-hf
+  labels:
+    run: llama-2-70b-chat-hf
+spec:
+  containers:
+    - name: text-generation-inference
+      image: ghcr.io/huggingface/text-generation-inference:latest
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+      env:
+        - name: RUST_BACKTRACE
+          value: "1"
+      command:
+        - "text-generation-launcher"
+        - "--model-id"
+        - "tiiuae/falcon-7b-instruct"
+        - "--num-shard"
+        - "2"
+      ports:
+        - containerPort: 80
+          name: http
+      volumeMounts:
+        - name: llama270b
+          mountPath: /data
+        - name: shm
+          mountPath: /dev/shm
+  volumes:
+    - name: llama270b
+      persistentVolumeClaim:
+        claimName: llama270b
+    - name: shm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 1Gi
+  nodeSelector:
+    agentpool: gpunp
+  tolerations:
+    - key: sku
+      operator: Equal
+      value: gpu
+      effect: NoSchedule
+  restartPolicy: Never
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: llama270b
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: managed-csi-premium
+  resources:
+    requests:
+      storage: 500Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llama-2-70b-chat-hf
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    run: llama-2-70b-chat-hf
+  type: ClusterIP

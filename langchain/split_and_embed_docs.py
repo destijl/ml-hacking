@@ -45,3 +45,4 @@ with open("alice_embeddings.json", "w") as f:
         index["id"] = f"aliceinwonderland-{textid}"
         index["embedding"] = embedding.embed_query(text)
         json.dump(index, f)
+        f.write("\n")
